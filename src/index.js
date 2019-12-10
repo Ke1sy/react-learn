@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
+import './index.scss';
 import * as serviceWorker from './serviceWorker';
 
 /*----- TIMER -----*/
@@ -265,30 +265,29 @@ function SpeedDetector (props) {
 	)
 }
 
-
 const UNIT = {
 	KPH: 'Км/ч',
 	MPH: 'Миль/ч'
 };
 
-function convertToKph(mph) {
+function convertToKph (mph) {
 	return mph * 1.61;
 }
 
-function convertToMph(kph) {
+function convertToMph (kph) {
 	return kph / 1.61;
 }
 
-function isValidSpeed(value){
-	if(value !== null && value !== '' && value !== undefined){
+function isValidSpeed (value) {
+	if (value !== null && value !== '' && value !== undefined) {
 		let intValue = parseInt(value);
 		return !(isNaN(intValue) || !isFinite(intValue));
 	}
 	return false
 }
 
-function convertSpeed(value, convertor) {
-	if(isValidSpeed(value)){
+function convertSpeed (value, convertor) {
+	if (isValidSpeed(value)) {
 		const intValue = parseInt(value);
 		let converted = convertor(intValue);
 		let rounded = Math.round(converted * 100) / 100;
@@ -335,7 +334,6 @@ class SpeedRadar extends React.Component {
 	}
 }
 
-
 class SpeedSetter extends React.Component {
 	constructor (props) {
 		super(props);
@@ -345,7 +343,7 @@ class SpeedSetter extends React.Component {
 		this.props.onChangeSpeed(e.target.value);
 	};
 
-	render() {
+	render () {
 		const unit = this.props.unit;
 		const speed = this.props.speed;
 		return (
@@ -357,6 +355,156 @@ class SpeedSetter extends React.Component {
 		)
 	}
 
+}
+
+//products table with search
+
+class FilterableProductTable extends React.Component {
+	constructor (props) {
+		super(props);
+		this.state = {
+			products: [],
+			searchText: '',
+			onlyInStock: false,
+		}
+	}
+
+	onChangeForm = (input) => {
+		let checkbox = input.type === 'checkbox';
+		this.setState({
+			[input.name]: checkbox ? input.checked : input.value
+		})
+	};
+
+	render () {
+		return (
+			<div className="products">
+				<SearchBar searchText={this.state.searchText} onlyStock={this.state.onlyInStock} onChangeForm={this.onChangeForm}/>
+				<ProductTable products={this.state.products} onlyStock={this.state.onlyInStock} searchText={this.state.searchText}/>
+			</div>
+		)
+	}
+
+	componentDidMount () {
+		fetch('./products.json')
+		.then(response => response.json())
+		.then(result => {
+			this.setState({
+				products: result
+			})
+		})
+		.catch(e => {
+			console.log(e);
+		});
+
+	}
+}
+
+
+class SearchBar extends React.Component {
+	constructor (props) {
+		super(props);
+	}
+
+	changeInput = (e) => {
+		this.props.onChangeForm(e.target);
+	};
+
+	render () {
+		const searchText = this.props.searchText;
+		const inStock = this.props.onlyStock;
+
+		return (
+			<form className="form">
+				<div className="form-group">
+					<input type="text" value={searchText} name="searchText" onChange={this.changeInput}   placeholder="Search..."/>
+				</div>
+				<div className="form-group">
+					<label>
+						<input type="checkbox" checked={inStock} name="onlyInStock" onChange={this.changeInput}/>
+						Only show products in stock
+					</label>
+				</div>
+			</form>
+		)
+	}
+}
+
+class ProductTable extends React.Component {
+	constructor (props) {
+		super(props)
+	}
+
+	filterByCategory = (category) => {
+		return this.props.products.filter(product => product.category === category);
+	};
+
+	render () {
+		const onlyStock =  this.props.onlyStock;
+		const searchText =  this.props.searchText;
+		const categories = [...new Set( this.props.products.map(item => item.category))];
+
+		return (
+			<div className="products__table">
+				<div className="row">
+					<div className="cell">Name</div>
+					<div className="cell">Price</div>
+				</div>
+
+				{
+					categories.map((category, k) => {
+						let categoryProds = this.filterByCategory(category);
+
+						return (
+							<div key={k}>
+								<ProductCategory title={category} />
+								{
+									categoryProds.map((prod, i) => {
+										if(prod.name.indexOf(searchText) === -1) {
+											return false;
+										}
+
+										if(onlyStock && !prod.stocked) {
+											return false;
+										}
+
+										return <ProductItem product={prod} key={k+'.'+i}/>;
+									})
+								}
+							</div>
+
+						)
+					})
+				}
+
+			</div>
+		)
+	}
+
+}
+
+function ProductCategory (props) {
+	return (
+		<div className="products__category">
+			{props.title}
+		</div>
+	)
+}
+
+function ProductItem (props) {
+	let inStockClass = !props.product.stocked ? ' red' : '';
+	return (
+		<div className="products__item">
+			<div className="row">
+				<div className={'cell' + inStockClass}>
+					{props.product.name}
+				</div>
+				<div className="cell">
+					{props.product.price}
+				</div>
+			</div>
+		</div>
+	)
 }
 
 ReactDOM.render(
@@ -372,8 +520,9 @@ ReactDOM.render(
 function Application () {
 	return (
 		<div>
+			<FilterableProductTable/>
 			{/*<FirePlace/>*/}
-			<SpeedRadar/>
+			{/*<SpeedRadar/>*/}
 			{/*<Chat users={users} messages={messages}/>*/}
 			{/*<Timer/>*/}
 			{/*<Conditioner/>*/}
